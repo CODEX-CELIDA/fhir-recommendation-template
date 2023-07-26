@@ -1,0 +1,59 @@
+name: FHIR Validation
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - staging
+  pull_request:
+    branches:
+      - main
+      - master
+      - staging
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+env:
+  LANG: "en_US.UTF-8"
+
+jobs:
+
+  fsh-fhir-validation:
+    runs-on: ubuntu-latest
+    steps:
+
+        # locale must be set explicitly, otherwise fhir validator 5.7.75 fails
+      - name: set locale
+        run: |
+          sudo locale-gen en_US.UTF-8
+          sudo update-locale LANG=en_US.UTF-8
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: setup python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install Python dependencies
+        uses: py-actions/py-dependency-install@v2
+
+      - name: Setup Java JDK
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup NodeJS
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Prepare environment
+        run: ./scripts/prepare-environment.sh
+
+      - name: Execute validator
+        run: fsh-validator --all

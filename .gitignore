@@ -1,0 +1,42 @@
+# Temporary folders #
+#####################
+temp
+template
+output
+input-cache
+fsh-generated
+_preprocessed
+notes
+notebooks
+
+# IG publisher files #
+###########################################
+validator_cli.jar
+publisher.jar
+_gencontinuous.bat
+_gencontinuous.sh
+
+# OS generated files #
+###########################
+.DS_Store
+Thumbs.db
+
+# IDE folders and files
+###########################
+.vscode
+*.code-workspace
+.idea
+
+# nodejs files/directories
+###########################
+package-lock.json
+node_modules/
+package.json
+
+# cache folders
+###########################
+__pycache__/
+
+# generated files
+###########################
+*-generated.md
