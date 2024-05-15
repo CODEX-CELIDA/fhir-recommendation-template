@@ -12,8 +12,8 @@ publisher:
   url: https://www.example.com
 
 dependencies:
-  ebm-cpg.netzwerk-universitaetsmedizin.de:
-    version: 0.6.1-snapshot
+  de.netzwerk-universitaetsmedizin.ebm-cpg:
+    version: 0.8.0-snapshot
 
 pages:
   index.md:
