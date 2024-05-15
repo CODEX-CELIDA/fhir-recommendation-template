@@ -14,6 +14,7 @@ jobs:
     outputs:
       new_release_published: ${{ steps.semantic_release_version.outputs.new_release_published }}
       new_release_version: ${{ steps.semantic_release_version.outputs.new_release_version }}
+      prerelease: ${{ steps.check-prerelease.outputs.prerelease }}
       
     steps:
       - uses: actions/checkout@v4
@@ -34,7 +35,6 @@ jobs:
         id: semantic_release_version
         uses: cycjimmy/semantic-release-action@v4
         with:
-          branch: main
           extra_plugins: |
             @semantic-release/changelog
             @semantic-release/github
@@ -47,6 +47,20 @@ jobs:
         run: |
           echo Version: ${{ steps.semantic_release_version.outputs.new_release_version }}
           echo new_release_published: ${{ steps.semantic_release_version.outputs.new_release_published }}
+
+      - name: Check pre-release
+        id: check-prerelease
+        run: |
+          if [[ "${{ steps.semantic_release_version.outputs.new_release_version }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "prerelease=false" >> $GITHUB_OUTPUT
+          else
+            echo "prerelease=true" >> $GITHUB_OUTPUT
+          fi
+        shell: bash
+
+      - name: Echo Prelease
+        run: |
+          echo pre-release: ${{ steps.check-prerelease.outputs.prerelease }}
 
   perform-release:
     needs: check-release
@@ -61,6 +75,7 @@ jobs:
       new_release_published: ${{ steps.semantic_release.outputs.new_release_published }}
       new_release_version: ${{ steps.semantic_release.outputs.new_release_version }}
       new_release_git_tag: ${{ steps.semantic_release.outputs.new_release_git_tag }}
+      prerelease: ${{ needs.check-release.outputs.prerelease }}
       ig_canonical: ${{ steps.yaml-data.outputs.canonical }}
       ig_id: ${{ steps.yaml-data.outputs.id }}
       ig_asset_filename: ${{ steps.generate-asset-filename.outputs.ig_asset_filename }}
@@ -118,7 +133,7 @@ jobs:
           mv ./output/package.tgz dist/${{ steps.generate-asset-filename.outputs.ig_asset_filename }}
 
       - name: Deploy to GitHub Pages
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        if: needs.check-release.outputs.prerelease == 'false'
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -127,10 +142,8 @@ jobs:
 
       - name: Semantic Release (Create release)
         id: semantic_release
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         uses: cycjimmy/semantic-release-action@v4
         with:
-          branch: main
           extra_plugins: |
             @semantic-release/changelog
             @semantic-release/github
