@@ -1,4 +1,4 @@
-name: ImplementationGuide Publisher
+name: IG Publisher to Github Pages
 
 # Controls when the action will run.
 on:
@@ -26,28 +26,10 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v3
 
-      # read id, version and canonical from sushi-config.yaml
-      - name: Run read-yaml action
-        id: yaml-data
-        uses: CumulusDS/get-yaml-paths-action@v1.0.1
-        with:
-          file: sushi-config.yaml
-          version: version
-          canonical: canonical
-          id: id
-
-      # display outputs from read-yaml action
-      - name: Display read-yaml output
-        run: |
-          echo "id: ${{ steps.yaml-data.outputs.id }}"
-          echo "target url: ${{ steps.yaml-data.outputs.canonical }}"
-          echo "version: ${{ steps.yaml-data.outputs.version }}"
-
       - name: Run the IG publisher
         uses: docker://hl7fhir/ig-publisher-base:latest
         with:
           args: ./scripts/run-ig-publisher.sh
-
 
       # deploy implementation guide to github pages
       - name: Deploy
@@ -57,15 +39,3 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./output
           force_orphan: true
-
-      # upload binaries to release
-      - name: Upload binaries to release
-        if: (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main')
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ./output/package.tgz
-          asset_name: ${{ steps.yaml-data.outputs.id }}-${{ steps.yaml-data.outputs.version }}.tgz
-          tag: v${{ steps.yaml-data.outputs.version }}
-          release_name: Release v${{ steps.yaml-data.outputs.version }}
-          overwrite: true
