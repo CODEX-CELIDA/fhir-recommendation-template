@@ -1,0 +1,26 @@
+branches:
+  - '+([0-9])?(.{+([0-9]),x}).x'
+  - 'master'
+  - 'main'
+  - 'next'
+  - 'next-major'
+  - name: 'beta'
+    prerelease: true
+  - name: 'alpha'
+    prerelease: true
+  - name: '^feat/.*'
+    prerelease: true
+  - name: '^fix/.*'
+    prerelease: true
+  - name: '^perf/.*'
+    prerelease: true
+
+
+plugins:
+  - "@semantic-release/commit-analyzer"
+  - "@semantic-release/release-notes-generator"
+  - "@semantic-release/changelog"
+  - 
+    - "@semantic-release/github"
+    - assets:
+        - "dist/**"

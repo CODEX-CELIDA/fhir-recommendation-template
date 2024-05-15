@@ -1,0 +1,139 @@
+name: Release Workflow
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check-release:
+    runs-on: ubuntu-latest
+    concurrency: check-release
+    permissions:
+      id-token: write
+      contents: write
+
+    outputs:
+      new_release_published: ${{ steps.semantic_release_version.outputs.new_release_published }}
+      new_release_version: ${{ steps.semantic_release_version.outputs.new_release_version }}
+      
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+
+      - name: Install dependencies
+        run: |
+          sudo snap install yq
+          npm install @semantic-release/changelog @semantic-release/github
+
+      - name: Semantic Release (Determine new version)
+        id: semantic_release_version
+        uses: cycjimmy/semantic-release-action@v4
+        with:
+          branch: main
+          extra_plugins: |
+            @semantic-release/changelog
+            @semantic-release/github
+          dry_run: true
+          ci: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Output new release version
+        run: |
+          echo Version: ${{ steps.semantic_release_version.outputs.new_release_version }}
+          echo new_release_published: ${{ steps.semantic_release_version.outputs.new_release_published }}
+
+  perform-release:
+    needs: check-release
+    if: needs.check-release.outputs.new_release_published == 'true'
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: write
+
+    outputs:
+      new_release_published: ${{ steps.semantic_release.outputs.new_release_published }}
+      new_release_version: ${{ steps.semantic_release.outputs.new_release_version }}
+      new_release_git_tag: ${{ steps.semantic_release.outputs.new_release_git_tag }}
+      ig_canonical: ${{ steps.yaml-data.outputs.canonical }}
+      ig_id: ${{ steps.yaml-data.outputs.id }}
+      ig_asset_filename: ${{ steps.generate-asset-filename.outputs.ig_asset_filename }}
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+
+      - name: Install dependencies
+        run: |
+          sudo snap install yq
+          npm install @semantic-release/changelog @semantic-release/github
+
+      - name: Update sushi-config.yaml with new version
+        run: |
+          yq eval '.version = "${{ needs.check-release.outputs.new_release_version }}"' -i sushi-config.yaml
+
+      # read id, version and canonical from sushi-config.yaml
+      - name: Read YAML file
+        id: yaml-data
+        run: |
+          VERSION=$(yq eval '.version' sushi-config.yaml)
+          ID=$(yq eval '.id' sushi-config.yaml)
+          CANONICAL=$(yq eval '.canonical' sushi-config.yaml)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "id=$ID" >> $GITHUB_OUTPUT
+          echo "canonical=$CANONICAL" >> $GITHUB_OUTPUT
+
+      - name: Generate asset filename
+        id: generate-asset-filename
+        run: echo "ig_asset_filename=${{ steps.yaml-data.outputs.id }}-${{ needs.check-release.outputs.new_release_version }}.tgz" >> $GITHUB_OUTPUT
+
+      # display outputs from read-yaml action
+      - name: Display read-yaml output
+        run: |
+          echo "id: ${{ steps.yaml-data.outputs.id }}"
+          echo "target url: ${{ steps.yaml-data.outputs.canonical }}"
+          echo "version: ${{ steps.yaml-data.outputs.version }}"
+          echo "asset filename: ${{ steps.generate-asset-filename.outputs.ig_asset_filename }}"
+
+      - name: Run the IG publisher
+        uses: docker://hl7fhir/ig-publisher-base:latest
+        with:
+          args: ./run-ig-publisher.sh
+
+      - name: Move package.tgz to output directory
+        run: |
+          mkdir -p dist/
+          mv ./output/package.tgz dist/${{ steps.generate-asset-filename.outputs.ig_asset_filename }}
+
+      - name: Deploy to GitHub Pages
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./output
+          force_orphan: true
+
+      - name: Semantic Release (Create release)
+        id: semantic_release
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        uses: cycjimmy/semantic-release-action@v4
+        with:
+          branch: main
+          extra_plugins: |
+            @semantic-release/changelog
+            @semantic-release/github
+          ci: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
