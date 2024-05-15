@@ -9,18 +9,18 @@ for /f "tokens=1,2" %%a in ('type sushi-config.yaml') do (
     )
     set "found=0"
   ) else (
-    echo %%a | findstr /C:"ebm-cpg.netzwerk-universitaetsmedizin.de:" > nul && set "found=1"
+    echo %%a | findstr /C:"de.netzwerk-universitaetsmedizin.ebm-cpg:" > nul && set "found=1"
   )
 )
 if NOT DEFINED cpg_version ( echo Failed to find the version in sushi-config.yaml. Exiting... & exit /b)
 
 echo CPG Version: "%cpg_version%"
 
-set "filename=ebm-cpg.netzwerk-universitaetsmedizin.de-%cpg_version%.tgz"
+set "filename=de.netzwerk-universitaetsmedizin.ebm-cpg-%cpg_version%.tgz"
 set "package_url=https://github.com/CEOsys/cpg-on-ebm-on-fhir/releases/download/v%cpg_version%/%filename%"
 echo %package_url% || (echo Failed to set package URL. Exiting... & exit /b)
 
-set "cpg_path=%USERPROFILE%\.fhir\packages\ebm-cpg.netzwerk-universitaetsmedizin.de#%cpg_version%"
+set "cpg_path=%USERPROFILE%\.fhir\packages\de.netzwerk-universitaetsmedizin.ebm-cpg#%cpg_version%"
 echo %cpg_path% || (echo Failed to set CPG path. Exiting... & exit /b)
 
 REM Check if directory exists and delete it if it does
